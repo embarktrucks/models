@@ -328,7 +328,7 @@ class SSDMetaArch(model.DetectionModel):
     ]
     return [(shape[1], shape[2]) for shape in feature_map_shapes]
 
-  def postprocess(self, prediction_dict):
+  def postprocess(self, prediction_dict, nms=True):
     """Converts prediction tensors to final detections.
 
     This function converts raw predictions tensors to final detection results by
@@ -375,10 +375,14 @@ class SSDMetaArch(model.DetectionModel):
       detection_scores = self._score_conversion_fn(
           class_predictions_without_background)
       clip_window = tf.constant([0, 0, 1, 1], tf.float32)
-      detections = self._non_max_suppression_fn(detection_boxes,
-                                                detection_scores,
-                                                clip_window=clip_window)
-    return detections
+      if nms:
+        detections = self._non_max_suppression_fn(detection_boxes,
+                                                  detection_scores,
+                                                  clip_window=clip_window)
+        return detections
+      else:
+        return detection_boxes, detection_scores
+
 
   def loss(self, prediction_dict, scope=None):
     """Compute scalar loss tensors with respect to provided groundtruth.
