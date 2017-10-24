@@ -438,6 +438,7 @@ class SSDMetaArch(model.DetectionModel):
       if self._normalize_loss_by_num_matches:
         normalizer = tf.maximum(tf.to_float(tf.reduce_sum(num_matches)), 1.0)
 
+      normalizer = tf.Print(normalizer, [self._localization_loss_weight,localization_loss,self._classification_loss_weight, classification_loss, normalizer], 'self._localization_loss_weight,localization_loss,self._classification_loss_weight, classification_loss, normalizer', summarize=1000)
       loss_dict = {
           'localization_loss': (self._localization_loss_weight / normalizer) *
                                localization_loss,

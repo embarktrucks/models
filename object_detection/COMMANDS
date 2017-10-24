@@ -1,14 +1,14 @@
 python object_detection/train.py \
     --logtostderr \
-    --num_clones 4 \
+    --num_clones 2 \
     --pipeline_config_path=/home/blake/projects/models/object_detection/samples/configs/ssd_mobilenet_v1_voc12.config \
     --train_dir=/sbox/users/blake/models/perception/objects/tf_SSD/pascal/001/
 
 python object_detection/eval.py \
     --logtostderr \
     --pipeline_config_path=/home/blake/projects/models/object_detection/samples/configs/ssd_mobilenet_v1_voc12.config \
-    --checkpoint_dir=/sbox/users/blake/models/perception/objects/tf_SSD/pascal/001/ \
-    --eval_dir=/sbox/users/blake/models/perception/objects/tf_SSD/pascal/001/test    
+    --checkpoint_dir=/sbox/users/blake/models/perception/objects/tf_SSD/pascal/008/ \
+    --eval_dir=/sbox/users/blake/models/perception/objects/tf_SSD/pascal/008/test    
 
 
 
@@ -18,20 +18,26 @@ python object_detection/train.py \
     --logtostderr \
     --num_clones 8 \
     --pipeline_config_path=/home/blake/projects/models/object_detection/samples/configs/ssd_mobilenet_v1_embark.config \
-    --train_dir=/sbox/users/blake/models/perception/objects/tf_SSD/embark/003/
+    --train_dir=/sbox/users/blake/models/perception/objects/tf_SSD/embark/015/
 
-python object_detection/eval.py \
+python -m pdb object_detection/eval.py \
     --logtostderr \
-    --pipeline_config_path=/home/blake/projects/models/object_detection/samples/configs/ssd_mobilenet_v1_embark.config \
-    --checkpoint_dir=/sbox/users/blake/models/perception/objects/tf_SSD/embark/004/ \
-    --eval_dir=/sbox/users/blake/models/perception/objects/tf_SSD/embark/004/test        
+    --pipeline_config_path=/sbox/users/blake/models/perception/objects/tf_SSD/embark/014/ssd_mobilenet_v1_embark.config \
+    --checkpoint_dir=/sbox/users/blake/models/perception/objects/tf_SSD/embark/014/ \
+    --eval_dir=/sbox/users/blake/models/perception/objects/tf_SSD/embark/014/test        
 
+/sbox/users/blake/models/perception/objects/tf_SSD/embark/012/
 
-python -m pdb object_detection/export_inference_graph.py \
+# ORIGINAL
+python object_detection/export_inference_graph.py \
 --input_type image_tensor \
 --pipeline_config_path /home/blake/projects/models/object_detection/samples/configs/ssd_mobilenet_v1_embark.config  \
---checkpoint_path  /sbox/users/blake/models/perception/objects/tf_SSD/embark/001/model.ckpt-7346 \
+--checkpoint_path  /sbox/users/blake/models/perception/objects/tf_SSD/embark/005/model.ckpt-71948 \
 --inference_graph_path output_inference_graph.pb
 
-
-python -m pdb object_detection/export_feature_inference_graph.py --input_type image_tensor --pipeline_config_path /home/blake/projects/models/object_detection/samples/configs/ssd_mobilenet_v1_embark.config  --checkpoint_path  /sbox/users/blake/models/perception/objects/tf_SSD/embark/002/model.ckpt-26609 --inference_graph_path output_inference_graph.pb
+# Features
+python object_detection/export_feature_inference_graph.py \
+--input_type image_tensor \
+--pipeline_config_path /home/blake/projects/models/object_detection/samples/configs/ssd_mobilenet_v1_embark.config  \
+--checkpoint_path  /sbox/users/blake/models/perception/objects/tf_SSD/embark/012/model.ckpt-47922 \
+--inference_graph_path /sbox/users/blake/models/perception/objects/tf_SSD/embark/012/freeze.pb

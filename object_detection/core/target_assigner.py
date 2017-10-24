@@ -208,6 +208,14 @@ class TargetAssigner(object):
     reg_targets = tf.dynamic_stitch(
         [matched_anchor_indices, unmatched_ignored_anchor_indices],
         [matched_reg_targets, unmatched_ignored_reg_targets])
+
+  
+    nan_idx = tf.where(tf.is_nan(tf.reduce_sum(matched_reg_targets, axis=1)))
+    nan_tens = tf.gather(matched_reg_targets, nan_idx)
+    nan_bboxes = tf.gather(matched_gt_boxes.get(), nan_idx)
+    nan_anchors = tf.gather(matched_anchors.get(), nan_idx)
+
+    reg_targets = tf.Print(reg_targets, [nan_tens, nan_bboxes, nan_anchors], 'nan_tens, nan_bboxes, nan_anchors', summarize=2000)
     # TODO: summarize the number of matches on average.
     return reg_targets
 

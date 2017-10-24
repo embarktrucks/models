@@ -120,8 +120,12 @@ def _create_losses(input_queue, create_model_fn):
   (images, groundtruth_boxes_list, groundtruth_classes_list,
    groundtruth_masks_list
   ) = _get_inputs(input_queue, detection_model.num_classes)
+  # groundtruth_boxes_list = tuple([tf.Print(groundtruth_boxes_list[0], [groundtruth_boxes_list], summarize=3000)] + list(groundtruth_boxes_list[1:]))
   images = [detection_model.preprocess(image) for image in images]
   images = tf.concat(images, 0)
+  # images = tf.Print(images, list(groundtruth_boxes_list), 'Ground Truths',summarize=3000)
+  # for i, b in enumerate(groundtruth_boxes_list):
+  #   images = tf.Print(images, [b], 'Ground Truths '+str(i),summarize=3000)  
   if any(mask is None for mask in groundtruth_masks_list):
     groundtruth_masks_list = None
 
@@ -176,7 +180,7 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
       global_step = slim.create_global_step()
 
     with tf.device(deploy_config.inputs_device()):
-      input_queue = _create_input_queue(train_config.batch_size // num_clones,
+      input_queue = _create_input_queue(train_config.batch_size,
                                         create_tensor_dict_fn,
                                         train_config.batch_queue_capacity,
                                         train_config.num_batch_queue_threads,

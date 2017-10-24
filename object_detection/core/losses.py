@@ -154,6 +154,13 @@ class WeightedSmoothL1LocalizationLoss(Loss):
     Returns:
       loss: a (scalar) tensor representing the value of the loss function
     """
+    def get_nan(tens):
+      flat_tens = tf.reshape(tens,[-1, tf.shape(tens)[2]])
+      nan_idx = tf.where(tf.is_nan(tf.reduce_sum(flat_tens, axis=1)))
+      nan_tens = tf.gather(flat_tens, nan_idx)
+      return nan_tens
+    prediction_tensor = tf.Print(prediction_tensor, [get_nan(prediction_tensor), get_nan(target_tensor)],'get_nan(prediction_tensor), get_nan(target_tensor)' , summarize=2000)
+#    target_tensor = tf.Print(target_tensor, [target_tensor, prediction_tensor],'target_tensor, prediction_tensor', summarize=30000)
     diff = prediction_tensor - target_tensor
     abs_diff = tf.abs(diff)
     abs_diff_lt_1 = tf.less(abs_diff, 1)

@@ -34,7 +34,6 @@ import numpy as np
 from object_detection.utils import metrics
 from object_detection.utils import per_image_evaluation
 
-
 class ObjectDetectionEvaluation(object):
   """Evaluate Object Detection Result."""
 
@@ -61,6 +60,7 @@ class ObjectDetectionEvaluation(object):
     self.average_precision_per_class = np.empty(self.num_class, dtype=float)
     self.average_precision_per_class.fill(np.nan)
     self.precisions_per_class = []
+
     self.recalls_per_class = []
     self.corloc_per_class = np.ones(self.num_class, dtype=float)
 
@@ -178,6 +178,7 @@ class ObjectDetectionEvaluation(object):
       self.num_gt_instances_per_class[class_index] += num_gt_instances
       if np.any(groundtruth_class_labels == class_index):
         self.num_gt_imgs_per_class[class_index] += 1
+  
 
   def evaluate(self):
     """Compute evaluation result.
@@ -196,6 +197,7 @@ class ObjectDetectionEvaluation(object):
       logging.warn(
           'The following classes have no ground truth examples: %s',
           np.squeeze(np.argwhere(self.num_gt_instances_per_class == 0)))
+    
     for class_index in range(self.num_class):
       if self.num_gt_instances_per_class[class_index] == 0:
         continue
@@ -205,18 +207,20 @@ class ObjectDetectionEvaluation(object):
           scores, tp_fp_labels, self.num_gt_instances_per_class[class_index])
       self.precisions_per_class.append(precision)
       self.recalls_per_class.append(recall)
+
       average_precision = metrics.compute_average_precision(precision, recall)
       self.average_precision_per_class[class_index] = average_precision
 
     self.corloc_per_class = metrics.compute_cor_loc(
         self.num_gt_imgs_per_class,
         self.num_images_correctly_detected_per_class)
-
+    sorted_scores_per_class = [-np.sort(-scores) for s in self.scores_per_class]
     mean_ap = np.nanmean(self.average_precision_per_class)
     mean_corloc = np.nanmean(self.corloc_per_class)
     return (self.average_precision_per_class, mean_ap,
             self.precisions_per_class, self.recalls_per_class,
-            self.corloc_per_class, mean_corloc)
+            self.corloc_per_class, mean_corloc,
+            self.precisions_per_class, self.recalls_per_class, sorted_scores_per_class)
 
   def get_eval_result(self):
     return EvalResult(self.average_precision_per_class,

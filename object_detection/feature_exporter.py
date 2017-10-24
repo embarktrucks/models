@@ -107,10 +107,10 @@ def _tf_example_input_placeholder():
     return tf.expand_dims(image, axis=0)
 
 
-def _image_tensor_input_placeholder():
+def _image_tensor_input_placeholder(idx):
     return tf.placeholder(dtype=tf.uint8,
                           shape=(None, None, 3),
-                          name='image_tensor')
+                          name='image_tensor_' + str(idx))
 
 input_placeholder_fn_map = {
     'tf_example': _tf_example_input_placeholder,
@@ -206,24 +206,40 @@ def _export_inference_graph(input_type,
     batch_size = 3
 
     inputs = []
+    print 'inputs:'
     for i in range(batch_size):
-        inputs.append(tf.to_float(input_placeholder_fn_map[input_type]()))
+        inp = tf.to_float(input_placeholder_fn_map[input_type](i))
+        print inp
+        # inp = tf.Print(inp, [inp], 'inp_' + str(i))
+        inputs.append(inp)
     inputs = tf.stack(inputs)
 
     preprocessed_inputs = detection_model.preprocess(inputs)
     output_tensors = detection_model.predict(preprocessed_inputs)
-    # del output_tensors['feature_maps']
-    # tf.identity(output_tensors['class_predictions_with_background'],
-    #             name='class_predictions_with_background')
-    # tf.identity(output_tensors['box_encodings'], name='box_encodings')
+
     detection_boxes, detection_scores = detection_model.postprocess(output_tensors, nms=False)
-    detection_boxes = tf.squeeze(detection_boxes, 2, name='detection_boxes')
-    detection_scores = tf.squeeze(detection_scores, 2, name='detection_scores')
+    detection_boxes = tf.squeeze(detection_boxes, 2)
+
+    split_boxes = tf.unstack(detection_boxes)
+    split_scores = tf.unstack(detection_scores)
+    output_node_names = []
+    print 'outputs:'
+    for i, (boxes, scores) in enumerate(zip(split_boxes, split_scores)):
+        boxes_name = 'detection_boxes_' + str(i)
+        scores_name = 'detection_scores_' + str(i)
+        # boxes = tf.Print(boxes, [boxes], 'boxes_' + str(i))
+        # scores = tf.Print(scores, [scores], 'scores_' + str(i))
+        b = tf.identity(boxes, name=boxes_name)
+        s = tf.identity(scores, name=scores_name)
+        print b
+        print s
+        output_node_names.append(boxes_name)
+        output_node_names.append(scores_name)
 
     # _add_output_tensor_nodes(output_tensors)
     _write_inference_graph(inference_graph_path, checkpoint_path,
                            use_moving_averages,
-                           output_node_names=('detection_boxes,detection_scores'))
+                           output_node_names=(','.join(output_node_names)))
 
 
 def export_inference_graph(input_type, pipeline_config, checkpoint_path,

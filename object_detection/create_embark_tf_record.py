@@ -72,6 +72,34 @@ LABEL_TO_INDEX = {
 }
 
 
+# def extract_cuboid_bbox(cuboid_data, image_shape):
+#     height, width = image_shape
+#     label_text = cuboid_data['label']
+#     label = LABEL_TO_INDEX[label_text]
+#     ymin = None
+#     xmin = None
+#     ymax = None
+#     xmax = None
+
+#     for v in cuboid_data['vertices']:
+#         if v['description'] == 'face-topleft':
+#             xmin = int(v['x'])
+#             ymin = int(v['y'])
+
+#         if v['description'] == 'face-bottomright':
+#             xmax = int(v['x'])
+#             ymax = int(v['y'])
+#     ymin = int(max(0, ymin)) / float(height)
+#     xmin = int(max(0, xmin)) / float(width)
+#     ymax = int(min(height, ymax)) / float(height)
+#     xmax = int(min(width, xmax)) / float(width)
+
+#     if ymax <= 0 or ymax > height or xmax <= 0 or xmax > width or ymin >= height or ymin < 0 or xmin >= width or xmin < 0:
+#         return None, None, None, None, None, None
+
+#     return label, label_text, xmin, ymin, xmax, ymax
+
+
 def extract_cuboid_bbox(cuboid_data, image_shape):
     height, width = image_shape
     label_text = cuboid_data['label']
@@ -89,17 +117,12 @@ def extract_cuboid_bbox(cuboid_data, image_shape):
         if v['description'] == 'face-bottomright':
             xmax = int(v['x'])
             ymax = int(v['y'])
-    ymin = int(max(0, ymin)) / float(height)
-    xmin = int(max(0, xmin)) / float(width)
-    ymax = int(min(height, ymax)) / float(height)
-    xmax = int(min(width, xmax)) / float(width)
-
-    if ymax <= 0 or ymax > height or xmax <= 0 or xmax > width or ymin >= height or ymin < 0 or xmin >= width or xmin < 0:
-        return None, None, None, None, None, None
+    ymin = min(max(0, ymin/ float(height)), 1.0)
+    xmin = min(max(0, xmin/ float(width)), 1.0)
+    ymax = max(min(1., ymax/float(height)), 0.0)
+    xmax = max(min(1., xmax/float(width)), 0.0)
 
     return label, label_text, xmin, ymin, xmax, ymax
-
-
 def extract_cuboid_bboxes(cuboids,
                           image_shape,
                           min_bbox_area=0.0002):
@@ -208,8 +231,17 @@ def main(_):
 
     frame_objects = get_frame_objects(datetimes)
 
-    writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
+    frames_per_record = 500
     num_frames = 0
+    record_num = int(num_frames/frames_per_record)
+    try:
+        import os
+        os.makedirs(FLAGS.output_path)
+    except:
+        pass
+    record_file = FLAGS.output_path + '_' + str(record_num)+ '.tf'
+    writer = tf.python_io.TFRecordWriter(record_file)
+    
     for i, frame in enumerate(frame_objects):
         if i % 100 == 0:
             print('Frame ', i)
@@ -217,8 +249,17 @@ def main(_):
         example = process_frame_object(frame)
         if example is None:
             continue
-        num_frames += 1
+        
+        if num_frames >0 and num_frames%frames_per_record == 0:
+            record_num = int(num_frames/frames_per_record)
+            record_file = FLAGS.output_path + '_' + str(record_num)+ '.tf'        
+            print("new record: ", record_file)
+            writer.close()
+            writer = tf.python_io.TFRecordWriter(record_file)
+
         writer.write(example.SerializeToString())
+        num_frames += 1
+
     print('Num Frames in Dataset:', num_frames)
     writer.close()
 

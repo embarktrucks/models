@@ -28,6 +28,11 @@ import PIL.ImageFont as ImageFont
 import six
 import tensorflow as tf
 
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import numpy as np
+import cv2
 
 _TITLE_LEFT_MARGIN = 10
 _TITLE_TOP_MARGIN = 10
@@ -423,3 +428,17 @@ def visualize_boxes_and_labels_on_image_array(image,
           color=color,
           radius=line_thickness / 2,
           use_normalized_coordinates=use_normalized_coordinates)
+
+def plot_precision_recall(precision, recall, scores):
+  fig = plt.figure(figsize=(10,6))
+  plt.plot(recall,precision, color='r')
+  plt.plot(recall,scores, color='b')
+  plt.ylabel('precision (r)/score(b)')
+  plt.xlabel('recall')
+  plt.xticks(np.linspace(0,1,11))
+  plt.yticks(np.linspace(0,1,11))
+  temp_save = '/tmp/pr_image.jpg'
+  fig.savefig(temp_save)
+  figure_image = cv2.imread(temp_save)
+  figure_image = cv2.cvtColor(figure_image, cv2.COLOR_BGR2RGB)
+  return figure_image

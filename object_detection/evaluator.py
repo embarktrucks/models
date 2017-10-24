@@ -31,7 +31,8 @@ from object_detection.utils import ops
 slim = tf.contrib.slim
 
 EVAL_METRICS_FN_DICT = {
-    'pascal_voc_metrics': eval_util.evaluate_detection_results_pascal_voc
+    'pascal_voc_metrics': eval_util.evaluate_detection_results_pascal_voc,
+    'precition_recal': eval_util.evaluate_detection_results_pascal_voc
 }
 
 
@@ -179,6 +180,14 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
       raise ValueError('Metric not found: {}'.format(eval_metric_fn_key))
     return EVAL_METRICS_FN_DICT[eval_metric_fn_key](result_lists,
                                                     categories=categories)
+  def _visualize_aggregated_results(result_lists, 
+                                    global_step, 
+                                    summary_dir):
+
+    eval_util.visualize_aggregated_results(result_lists,
+                                          global_step,
+                                          summary_dir,
+                                          categories)    
 
   variables_to_restore = tf.global_variables()
   global_step = slim.get_or_create_global_step()
@@ -196,6 +205,7 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
       update_op=tf.no_op(),
       summary_dir=eval_dir,
       aggregated_result_processor=_process_aggregated_results,
+      aggregated_result_visualizer=_visualize_aggregated_results,
       batch_processor=_process_batch,
       checkpoint_dirs=[checkpoint_dir],
       variables_to_restore=None,

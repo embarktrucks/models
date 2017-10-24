@@ -139,6 +139,13 @@ def get_configs_from_multiple_files():
 
 def main(_):
   assert FLAGS.train_dir, '`train_dir` is missing.'
+  import os
+  try:
+    os.makedirs(FLAGS.train_dir)
+    import shutil
+    shutil.copy(FLAGS.pipeline_config_path, FLAGS.train_dir)
+  except:
+    pass
   if FLAGS.pipeline_config_path:
     model_config, train_config, input_config = get_configs_from_pipeline_file()
   else:
