@@ -160,6 +160,7 @@ def dict_to_tf_example(data,
     if not faces_only:
       mask_remapped = mask_np != 2
       masks.append(mask_remapped)
+  if not faces_only:      
     mask_stack = np.stack(masks).astype(np.float32)
     masks_flattened = np.reshape(mask_stack, [-1])
 
