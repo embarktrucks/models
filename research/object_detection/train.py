@@ -50,6 +50,7 @@ from object_detection import trainer
 from object_detection.builders import input_reader_builder
 from object_detection.builders import model_builder
 from object_detection.utils import config_util
+from object_detection.utils import label_map_util
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -113,7 +114,7 @@ def main(_):
       model_builder.build,
       model_config=model_config,
       is_training=True)
-
+  categories = label_map_util.load_labelmap(input_config.label_map_path)
   create_input_dict_fn = functools.partial(
       input_reader_builder.build, input_config)
 
@@ -156,7 +157,7 @@ def main(_):
 
   trainer.train(create_input_dict_fn, model_fn, train_config, master, task,
                 FLAGS.num_clones, worker_replicas, FLAGS.clone_on_cpu, ps_tasks,
-                worker_job_name, is_chief, FLAGS.train_dir)
+                worker_job_name, is_chief, FLAGS.train_dir, categories)
 
 
 if __name__ == '__main__':
