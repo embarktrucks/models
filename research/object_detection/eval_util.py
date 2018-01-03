@@ -50,7 +50,6 @@ def write_metrics(metrics, global_step, summary_dir):
   summary_writer.close()
   logging.info('Metrics written to tf summary.')
 
-
 # TODO: Add tests.
 def visualize_detection_results(result_dict,
                                 tag,
@@ -177,7 +176,8 @@ def _run_checkpoint_once(tensor_dict,
                          num_batches=1,
                          master='',
                          save_graph=False,
-                         save_graph_dir=''):
+                         save_graph_dir='',
+                         number_of_evaluations=None):
   """Evaluates metrics defined in evaluators.
 
   This function loads the latest checkpoint in checkpoint_dirs and evaluates
@@ -259,7 +259,7 @@ def _run_checkpoint_once(tensor_dict,
             counters['skipped'] += 1
             result_dict = {}
         else:
-          result_dict = batch_processor(tensor_dict, sess, batch, counters)
+          result_dict = batch_processor(tensor_dict, sess, batch, counters, number_of_evaluations)
         for evaluator in evaluators:
           # TODO: Use image_id tensor once we fix the input data
           # decoders to return correct image_id.
@@ -378,7 +378,8 @@ def repeated_checkpoint_run(tensor_dict,
                                                   variables_to_restore,
                                                   restore_fn, num_batches,
                                                   master, save_graph,
-                                                  save_graph_dir)
+                                                  save_graph_dir,
+                                                  number_of_evaluations)
       write_metrics(metrics, global_step, summary_dir)
     number_of_evaluations += 1
 

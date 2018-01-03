@@ -20,7 +20,7 @@ DetectionModel.
 """
 
 import functools
-import traceback
+
 import tensorflow as tf
 import numpy as np
 from object_detection.builders import optimizer_builder
@@ -122,21 +122,52 @@ def get_inputs(input_queue, num_classes, merge_multiple_label_boxes=False):
         location_gt = read_data[fields.InputDataFields.groundtruth_boxes]
         classes_gt = tf.cast(read_data[fields.InputDataFields.groundtruth_classes],
                              tf.int32)
-        classes_k_hot_gt = classes_gt - label_id_offset
+        classes_gt -= label_id_offset
         if merge_multiple_label_boxes:
-            location_gt, classes_k_hot_gt, _ = util_ops.merge_boxes_with_multiple_labels(
-                location_gt, classes_k_hot_gt, num_classes)
+            location_gt, classes_gt, _ = util_ops.merge_boxes_with_multiple_labels(
+                location_gt, classes_gt, num_classes)
         else:
-            classes_k_hot_gt = util_ops.padded_one_hot_encoding(
-                indices=classes_k_hot_gt, depth=num_classes, left_pad=0)
+            classes_gt = util_ops.padded_one_hot_encoding(
+                indices=classes_gt, depth=num_classes, left_pad=0)
         masks_gt = read_data.get(fields.InputDataFields.groundtruth_instance_masks)
         keypoints_gt = read_data.get(fields.InputDataFields.groundtruth_keypoints)
         if (merge_multiple_label_boxes and (
                 masks_gt is not None or keypoints_gt is not None)):
             raise NotImplementedError('Multi-label support is only for boxes.')
-        return image, key, location_gt, classes_gt, classes_k_hot_gt, masks_gt, keypoints_gt
+        return image, key, location_gt, classes_gt, masks_gt, keypoints_gt
 
     return zip(*map(extract_images_and_targets, read_data_list))
+
+
+def _visualize_detections(images_list,
+                          groundtruth_boxes_list,
+                          groundtruth_classes_list,
+                          groundtruth_scores_list,
+                          categories):
+    if groundtruth_scores_list is None:
+        groundtruth_scores_list = [tf.constant([], name='visualize_NONE_value')] * len(images_list)
+
+    def viz(image, bboxes, classes, scores):
+        if len(scores) == 0:
+            scores = None
+        return vis_utils.visualize_boxes_and_labels_on_image_array(
+            image,
+            bboxes,
+            classes,
+            scores,
+            categories,
+            keypoints=None,
+            use_normalized_coordinates=False,
+            max_boxes_to_draw=None)
+    for image, bboxes, classes, scores in zip(images_list, groundtruth_boxes_list, groundtruth_classes_list, groundtruth_scores_list):
+        overlay = tf.py_func(viz,
+                             [image, bboxes, classes, scores],
+                             image.dtype,
+                             name='visualize_gt')
+        overlay.set_shape(image.shape)
+        tf.summary.image('ground_truths',
+                         overlay,
+                         1)
 
 
 def _create_losses(input_queue, create_model_fn, train_config, categories):
@@ -148,18 +179,16 @@ def _create_losses(input_queue, create_model_fn, train_config, categories):
      train_config: a train_pb2.TrainConfig protobuf.
     """
     detection_model = create_model_fn()
-    (images, _, groundtruth_boxes_list, groundtruth_classes_list, groundtruth_classes_k_hot_list,
+    (images, _, groundtruth_boxes_list, groundtruth_classes_list,
      groundtruth_masks_list, groundtruth_keypoints_list) = get_inputs(
         input_queue,
         detection_model.num_classes,
         train_config.merge_multiple_label_boxes)
-    groundtruth_images = [image[0] for image in images]
-    vis_utils.draw_bounding_boxes_on_image_tensors("groundtruths",
-                                    groundtruth_images,
-                                    groundtruth_boxes_list,
-                                    groundtruth_classes_list,
-                                    None,
-                                    categories)
+    # _visualize_detections(images,
+    #                       groundtruth_boxes_list,
+    #                       groundtruth_classes_list,
+    #                       None,
+    #                       categories)
     # visualize_ground truth
 
     images = [detection_model.preprocess(image) for image in images]
@@ -170,22 +199,10 @@ def _create_losses(input_queue, create_model_fn, train_config, categories):
         groundtruth_keypoints_list = None
 
     detection_model.provide_groundtruth(groundtruth_boxes_list,
-                                        groundtruth_classes_k_hot_list,
+                                        groundtruth_classes_list,
                                         groundtruth_masks_list,
                                         groundtruth_keypoints_list)
     prediction_dict = detection_model.predict(images)
-    postprocess_dict = detection_model.postprocess(prediction_dict)
-    detection_images = tf.unstack(images)
-    detection_boxes = tf.unstack(postprocess_dict['detection_boxes'])
-    detection_classes = tf.unstack(tf.cast(postprocess_dict['detection_classes']+1, tf.int64))
-    detection_scores = tf.unstack(postprocess_dict['detection_scores'])
-    vis_utils.draw_bounding_boxes_on_image_tensors("predictions",
-                                    detection_images,
-                                    detection_boxes,
-                                    detection_classes,
-                                    detection_scores,
-                                    categories,
-                                    min_score_thresh=0.5)
 
     losses_dict = detection_model.loss(prediction_dict)
     for loss_tensor in losses_dict.values():
@@ -353,6 +370,6 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
             summary_op=summary_op,
             number_of_steps=(
                 train_config.num_steps if train_config.num_steps else None),
-            save_summaries_secs=100,
+            save_summaries_secs=120,
             sync_optimizer=sync_optimizer,
             saver=saver)

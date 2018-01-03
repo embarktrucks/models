@@ -291,7 +291,10 @@ def input_fn(data_dir,
     label_shards = [tf.parallel_stack(x) for x in label_shards]
     return feature_shards, label_shards
 
-
+# def shard_input_dictionary(input_dict, num_shards):
+#   shard_dict = {}
+#   for key, value in input_dict.iteritems():
+#     shard_dict
 def get_experiment_fn(data_dir,
                       num_gpus,
                       variable_strategy,
