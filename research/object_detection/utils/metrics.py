@@ -56,14 +56,29 @@ def compute_precision_recall(scores, labels, num_gt):
 
   sorted_indices = np.argsort(scores)
   sorted_indices = sorted_indices[::-1]
+
   labels = labels.astype(int)
-  true_positive_labels = labels[sorted_indices]
-  false_positive_labels = 1 - true_positive_labels
-  cum_true_positives = np.cumsum(true_positive_labels)
-  cum_false_positives = np.cumsum(false_positive_labels)
+
+
+
+  thresholds = np.linspace(0.01,.99,99)[::-1]  
+  cum_true_positives = np.zeros_like(thresholds)
+  cum_false_positives = np.zeros_like(thresholds)  
+  for i, t in enumerate(thresholds):
+    cum_true_positives[i] = np.sum(np.logical_and(labels,(scores>t)))
+    cum_false_positives[i] = np.sum(np.logical_and(labels==False,(scores>t)))
+
+
+  # true_positive_labels = labels[sorted_indices]
+  # false_positive_labels = 1 - true_positive_labels
+  # cum_true_positives = np.cumsum(true_positive_labels)
+  # cum_false_positives = np.cumsum(false_positive_labels)
+
   precision = cum_true_positives.astype(float) / (
       cum_true_positives + cum_false_positives)
   recall = cum_true_positives.astype(float) / num_gt
+  # print('precision_shape:', precision.shape)
+  # raise Exception('[')
   return precision, recall
 
 
@@ -104,6 +119,10 @@ def compute_average_precision(precision, recall):
   if np.amin(recall) < 0 or np.amax(recall) > 1:
     raise ValueError("recall must be in the range of [0, 1].")
   if not all(recall[i] <= recall[i + 1] for i in range(len(recall) - 1)):
+    print "RECALL:"
+    print recall
+    print "precision:"
+    print precision    
     raise ValueError("recall must be a non-decreasing array")
 
   recall = np.concatenate([[0], recall, [1]])
@@ -116,7 +135,7 @@ def compute_average_precision(precision, recall):
   indices = np.where(recall[1:] != recall[:-1])[0] + 1
   average_precision = np.sum(
       (recall[indices] - recall[indices - 1]) * precision[indices])
-  return average_precision
+  return average_precision.astype(np.float32)
 
 
 def compute_cor_loc(num_gt_imgs_per_class,

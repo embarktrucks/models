@@ -503,8 +503,7 @@ def visualize_boxes_and_labels_on_image_array(image,
     """
     # Create a display string (and color) for every box location, group any boxes
     # that correspond to the same location.
-    print "Classes: "
-    print classes
+
     image = image.copy()
     try:
         box_to_display_str_map = collections.defaultdict(list)
@@ -541,7 +540,9 @@ def visualize_boxes_and_labels_on_image_array(image,
                             classes[i] % len(STANDARD_COLORS)]
 
         # Draw all boxes onto image.
+        # print "-------------"
         for box, color in box_to_color_map.items():
+            # print "BOX: ", box,  "COLOR: " , color
             ymin, xmin, ymax, xmax = box
             if instance_masks is not None:
                 draw_mask_on_image_array(

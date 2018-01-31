@@ -416,6 +416,8 @@ class SSDMetaArch(model.DetectionModel):
            additional_fields=additional_fields)
       detection_dict = {'detection_boxes': nmsed_boxes,
                         'detection_scores': nmsed_scores,
+                        'detection_boxes_unsuppressed': tf.squeeze(detection_boxes, 2),
+                        'detection_scores_unsuppressed': detection_scores,
                         'detection_classes': nmsed_classes,
                         'num_detections': tf.to_float(num_detections)}
       if (nmsed_additional_fields is not None and

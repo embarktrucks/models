@@ -35,7 +35,6 @@ import PIL.Image
 import tensorflow as tf
 
 flags = tf.app.flags
-flags.DEFINE_string('dataset_file', '', 'file for dataset.')
 flags.DEFINE_string('output_path', '', 'Path to output TFRecord')
 FLAGS = flags.FLAGS
 
@@ -52,9 +51,6 @@ from sqlalchemy import or_, and_
 from embark.dqi.sensor_data_interface import SensorDataInterface
 from embark.services import RDSService
 import embark.services.thedb.model as m
-from embark.perception.objects.training.data_providers.ssd import SSD
-
-FrameObjects = m.FrameObjects
 SENSOR_DATA = SensorDataInterface('/sbox/data')
 
 DATA_PATH = '/sbox/data'
@@ -117,12 +113,14 @@ def extract_cuboid_bbox(cuboid_data, image_shape):
         if v['description'] == 'face-bottomright':
             xmax = int(v['x'])
             ymax = int(v['y'])
-    ymin = min(max(0, ymin/ float(height)), 1.0)
-    xmin = min(max(0, xmin/ float(width)), 1.0)
-    ymax = max(min(1., ymax/float(height)), 0.0)
-    xmax = max(min(1., xmax/float(width)), 0.0)
+    ymin = min(max(0, ymin / float(height)), 1.0)
+    xmin = min(max(0, xmin / float(width)), 1.0)
+    ymax = max(min(1., ymax / float(height)), 0.0)
+    xmax = max(min(1., xmax / float(width)), 0.0)
 
     return label, label_text, xmin, ymin, xmax, ymax
+
+
 def extract_cuboid_bboxes(cuboids,
                           image_shape,
                           min_bbox_area=0.0002):
@@ -141,7 +139,7 @@ def extract_cuboid_bboxes(cuboids,
         area = (ymax - ymin) * (xmax - xmin)
         if area < min_bbox_area:
             continue
-        # only use vehicle or no vehicle        
+        # only use vehicle or no vehicle
         labels.append(1)
         labels_text.append(label_text.encode('utf8'))
         ymins.append(ymin)
@@ -153,8 +151,9 @@ def extract_cuboid_bboxes(cuboids,
 
 
 def process_frame_object(frame):
-    image_file = SENSOR_DATA.get_image(frame.timestamp, 3)
+    image_file = SENSOR_DATA.get_image(1, frame.timestamp, frame.cam)
     if not os.path.exists(image_file):
+        print('Image file does not exist: ', image_file)
         return None
     cuboid_data = json.loads(frame.data)
 
@@ -203,45 +202,35 @@ def process_frame_object(frame):
     return example
 
 
-def get_frame_objects(datetimes):
+def get_frame_objects():
     sensor_data = SensorDataInterface('/sbox/data')
     rds = RDSService()
     rds.load(db='production')
     db = rds.session()
-    frame_filter = and_(FrameObjects.data != None,
-                        FrameObjects.is_cuboid,
-                        FrameObjects.timestamp.in_(datetimes))
-    frame_objects = db.query(FrameObjects).filter(frame_filter).all()
+    frame_filter = and_(m.FrameLabels.data != None,
+                        m.FrameLabels.label_type == m.FrameLabels.LabelTypes.VEHICLE_CUBOID)
+    frame_objects = db.query(m.FrameLabels).filter(frame_filter)\
+        .order_by(m.FrameLabels.timestamp).all()
     db.commit()
     db.close()
     return frame_objects
 
 
-def main(_):
+def save_dataset(save_path, frame_objects, frames_per_record=500):
+    frame_objects = list(frame_objects)
+    import random
+    random.shuffle(frame_objects)
 
-    dataset_file = FLAGS.dataset_file
-
-    datetimes = []
-    with open(dataset_file) as f:
-        for line in f:
-            line = line.strip()
-            digits = [int(d) for d in line.split('/')]
-            dt = pytz.utc.localize(datetime(*digits))
-            datetimes.append(dt)
-
-    frame_objects = get_frame_objects(datetimes)
-
-    frames_per_record = 500
     num_frames = 0
-    record_num = int(num_frames/frames_per_record)
+    record_num = int(num_frames / frames_per_record)
     try:
         import os
         os.makedirs(FLAGS.output_path)
     except:
         pass
-    record_file = FLAGS.output_path + '_' + str(record_num)+ '.tf'
+    record_file = save_path + '/' + str(record_num) + '.tf'
     writer = tf.python_io.TFRecordWriter(record_file)
-    
+
     for i, frame in enumerate(frame_objects):
         if i % 100 == 0:
             print('Frame ', i)
@@ -249,10 +238,10 @@ def main(_):
         example = process_frame_object(frame)
         if example is None:
             continue
-        
-        if num_frames >0 and num_frames%frames_per_record == 0:
-            record_num = int(num_frames/frames_per_record)
-            record_file = FLAGS.output_path + '_' + str(record_num)+ '.tf'        
+
+        if num_frames > 0 and num_frames % frames_per_record == 0:
+            record_num = int(num_frames / frames_per_record)
+            record_file = save_path + '/' + str(record_num) + '.tf'
             print("new record: ", record_file)
             writer.close()
             writer = tf.python_io.TFRecordWriter(record_file)
@@ -263,6 +252,32 @@ def main(_):
     print('Num Frames in Dataset:', num_frames)
     writer.close()
 
+
+def main(_):
+
+    # dataset_file = FLAGS.dataset_file
+
+    # datetimes = []
+    # with open(dataset_file) as f:
+    #     for line in f:
+    #         line = line.strip()
+    #         digits = [int(d) for d in line.split('/')]
+    #         dt = pytz.utc.localize(datetime(*digits))
+    #         datetimes.append(dt)
+
+    import random
+
+    frame_objects = get_frame_objects()
+    num_total = len(frame_objects)
+    num_train = int(num_total * .95)
+    train_set = frame_objects[:num_train]
+    test_set = frame_objects[num_train:]
+    print("TRAIN FRAMES: ", len(train_set))
+    print("TEST FRAMES: ", len(test_set))
+    print("saving train")
+    save_dataset(FLAGS.output_path + '/train', train_set)
+    print("saving test")
+    save_dataset(FLAGS.output_path + '/test', test_set)
 
 if __name__ == '__main__':
     tf.app.run()

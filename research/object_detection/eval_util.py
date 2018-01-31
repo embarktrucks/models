@@ -250,6 +250,7 @@ def _run_checkpoint_once(tensor_dict,
       for batch in range(int(num_batches)):
         if (batch + 1) % 100 == 0:
           logging.info('Running eval ops batch %d/%d', batch + 1, num_batches)
+        print(batch, '/', num_batches)
         if not batch_processor:
           try:
             result_dict = sess.run(tensor_dict)

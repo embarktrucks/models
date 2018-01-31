@@ -159,6 +159,19 @@ def main(_):
         task = task_info.index
         is_chief = (task_info.type == 'master')
         master = server.target
+    # builder = tf.profiler.ProfileOptionBuilder
+    # opts = builder(builder.time_and_memory()).order_by('micros').build()
+    # opts2 = tf.profiler.ProfileOptionBuilder.trainable_variables_parameter()
+
+    # # Collect traces of steps 10~20, dump the whole profile (with traces of
+    # # step 10~20) at step 20. The dumped profile can be used for further profiling
+    # # with command line interface or Web UI.
+    # with tf.contrib.tfprof.ProfileContext('/tmp/train_dir_googl',
+    #                                       trace_steps=range(10, 20),
+    #                                       dump_steps=[20]) as pctx:
+    #     pctx.add_auto_profiling('op', opts, [15, 18, 20])
+    #     # Run online profiling with 'scope' view and 'opts2' options at step 20.
+    #     pctx.add_auto_profiling('scope', opts2, [20])
 
     trainer.train(create_input_dict_fn, model_fn, train_config, master, task,
                   FLAGS.num_clones, worker_replicas, FLAGS.clone_on_cpu, ps_tasks,
