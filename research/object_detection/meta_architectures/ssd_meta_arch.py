@@ -412,7 +412,7 @@ class SSDMetaArch(model.DetectionModel):
        num_detections) = self._non_max_suppression_fn(
            detection_boxes,
            detection_scores,
-           clip_window=clip_window,
+           clip_window=None,
            additional_fields=additional_fields)
       detection_dict = {'detection_boxes': nmsed_boxes,
                         'detection_scores': nmsed_scores,

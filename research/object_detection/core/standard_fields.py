@@ -63,6 +63,11 @@ class InputDataFields(object):
   key = 'key'
   source_id = 'source_id'
   filename = 'filename'
+
+  crop_tl_x = 'crop_tl_x'
+  crop_tl_y = 'crop_tl_y'
+  crop_br_x = 'crop_br_x'
+  crop_br_y = 'crop_br_y'
   groundtruth_image_classes = 'groundtruth_image_classes'
   groundtruth_boxes = 'groundtruth_boxes'
   groundtruth_classes = 'groundtruth_classes'

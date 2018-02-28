@@ -62,6 +62,12 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             tf.FixedLenFeature((), tf.int64, 1),
         'image/width':
             tf.FixedLenFeature((), tf.int64, 1),
+
+        'image/crop_tl_x': tf.FixedLenFeature((), tf.int64, 1),
+        'image/crop_tl_y': tf.FixedLenFeature((), tf.int64, 1),
+        'image/crop_br_x': tf.FixedLenFeature((), tf.int64, 1),
+        'image/crop_br_y': tf.FixedLenFeature((), tf.int64, 1),
+
         # Object boxes and classes.
         'image/object/bbox/xmin':
             tf.VarLenFeature(tf.float32),
@@ -93,6 +99,17 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             slim_example_decoder.Tensor('image/key/sha256')),
         fields.InputDataFields.filename: (
             slim_example_decoder.Tensor('image/filename')),
+        fields.InputDataFields.key: (
+                    slim_example_decoder.Tensor('image/key/sha256')),    
+        fields.InputDataFields.crop_tl_x: (
+                    slim_example_decoder.Tensor('image/crop_tl_x')),        
+        fields.InputDataFields.crop_tl_y: (
+                    slim_example_decoder.Tensor('image/crop_tl_y')),        
+        fields.InputDataFields.crop_br_x: (
+                    slim_example_decoder.Tensor('image/crop_br_x')),        
+        fields.InputDataFields.crop_br_y: (
+                    slim_example_decoder.Tensor('image/crop_br_y')),                                                        
+    
         # Object boxes and classes.
         fields.InputDataFields.groundtruth_boxes: (
             slim_example_decoder.BoundingBox(

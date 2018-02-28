@@ -1246,7 +1246,7 @@ def random_crop_pad_image(image,
     padded_image: padded image.
     padded_boxes: boxes which is the same rank as input boxes. Boxes are in
                   normalized form.
-    cropped_labels: cropped labels.
+    cropped_labels: cropped labels.cifar10
     if label_scores is not None also returns:
     cropped_label_scores: cropped label scores.
   """
