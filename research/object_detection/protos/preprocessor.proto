@@ -155,6 +155,8 @@ message RandomCropImage {
 
   // Probability of keeping the original image.
   optional float random_coef = 7 [default=0.0];
+
+  optional bool clip_bboxes = 8 [default=false];
 }
 
 // Randomly adds padding to the image.
@@ -204,6 +206,8 @@ message RandomCropPadImage {
   // Color of the padding. If unset, will pad using average color of the input
   // image.
   repeated float pad_color = 10;
+
+  optional bool clip_bboxes = 11 [default=false];
 }
 
 // Randomly crops an iamge to a given aspect ratio.
@@ -215,6 +219,7 @@ message RandomCropToAspectRatio {
   // ratio between a cropped bounding box and the original is less than this
   // value, it is removed from the new image.
   optional float overlap_thresh = 2 [default=0.3];
+  optional bool clip_bboxes = 3 [default=false];
 }
 
 // Randomly adds black square patches to an image.
@@ -280,6 +285,7 @@ message SSDRandomCropOperation {
 
   // Probability a crop operation is skipped.
   optional float random_coef = 7;
+  optional bool clip_bboxes = 8 [default=false];
 }
 
 // Randomly crops a image according to:
@@ -323,6 +329,7 @@ message SSDRandomCropPadOperation {
   optional float pad_color_r = 10;
   optional float pad_color_g = 11;
   optional float pad_color_b = 12;
+  optional bool clip_bboxes = 13 [default=false];
 }
 
 // Randomly crops and pads an image according to:
@@ -348,6 +355,7 @@ message SSDRandomCropFixedAspectRatioOperation {
 
   // Probability a crop operation is skipped.
   optional float random_coef = 7;
+  optional bool clip_bboxes = 8 [default=false];
 }
 
 // Randomly crops a image to a fixed aspect ratio according to:
@@ -390,6 +398,7 @@ message SSDRandomCropPadFixedAspectRatioOperation {
   // Max ratio of padded image height and width to the input image's height and
   // width. Two entries per operation.
   repeated float max_padded_size_ratio = 9;
+  optional bool clip_bboxes = 10 [default=false];
 }
 
 // Randomly crops and pads an image to a fixed aspect ratio according to:

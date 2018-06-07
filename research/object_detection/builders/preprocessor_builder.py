@@ -151,6 +151,7 @@ def build(preprocessor_step_config):
                 'area_range': (config.min_area, config.max_area),
                 'overlap_thresh': config.overlap_thresh,
                 'random_coef': config.random_coef,
+                'clip_bboxes': config.clip_bboxes
             })
 
   if step_type == 'random_pad_image':
@@ -201,6 +202,7 @@ def build(preprocessor_step_config):
         'area_range': (config.min_area, config.max_area),
         'overlap_thresh': config.overlap_thresh,
         'random_coef': config.random_coef,
+        'clip_bboxes': config.clip_bboxes
     }
     if min_padded_size_ratio:
       kwargs['min_padded_size_ratio'] = tuple(min_padded_size_ratio)
@@ -231,6 +233,7 @@ def build(preprocessor_step_config):
     config = preprocessor_step_config.ssd_random_crop
     if config.operations:
       min_object_covered = [op.min_object_covered for op in config.operations]
+      clip_bboxes = [op.clip_bboxes for op in config.operations]
       aspect_ratio_range = [(op.min_aspect_ratio, op.max_aspect_ratio)
                             for op in config.operations]
       area_range = [(op.min_area, op.max_area) for op in config.operations]
@@ -243,6 +246,7 @@ def build(preprocessor_step_config):
                   'area_range': area_range,
                   'overlap_thresh': overlap_thresh,
                   'random_coef': random_coef,
+                  'clip_bboxes' : clip_bboxes
               })
     return (preprocessor.ssd_random_crop, {})
 
@@ -250,6 +254,7 @@ def build(preprocessor_step_config):
     config = preprocessor_step_config.ssd_random_crop_pad
     if config.operations:
       min_object_covered = [op.min_object_covered for op in config.operations]
+      clip_bboxes = [op.clip_bboxes for op in config.operations]
       aspect_ratio_range = [(op.min_aspect_ratio, op.max_aspect_ratio)
                             for op in config.operations]
       area_range = [(op.min_area, op.max_area) for op in config.operations]
@@ -273,6 +278,7 @@ def build(preprocessor_step_config):
                   'min_padded_size_ratio': min_padded_size_ratio,
                   'max_padded_size_ratio': max_padded_size_ratio,
                   'pad_color': pad_color,
+                  'clip_bboxes' : clip_bboxes
               })
     return (preprocessor.ssd_random_crop_pad, {})
 
@@ -283,6 +289,7 @@ def build(preprocessor_step_config):
       area_range = [(op.min_area, op.max_area) for op in config.operations]
       overlap_thresh = [op.overlap_thresh for op in config.operations]
       random_coef = [op.random_coef for op in config.operations]
+      clip_bboxes = [op.clip_bboxes for op in config.operations]
       return (preprocessor.ssd_random_crop_fixed_aspect_ratio,
               {
                   'min_object_covered': min_object_covered,
@@ -290,6 +297,7 @@ def build(preprocessor_step_config):
                   'area_range': area_range,
                   'overlap_thresh': overlap_thresh,
                   'random_coef': random_coef,
+                  'clip_bboxes' : clip_bboxes
               })
     return (preprocessor.ssd_random_crop_fixed_aspect_ratio, {})
 
@@ -302,6 +310,7 @@ def build(preprocessor_step_config):
       area_range = [(op.min_area, op.max_area) for op in config.operations]
       overlap_thresh = [op.overlap_thresh for op in config.operations]
       random_coef = [op.random_coef for op in config.operations]
+      clip_bboxes = [op.clip_bboxes for op in config.operations]
       min_padded_size_ratio = [
           (op.min_padded_size_ratio[0], op.min_padded_size_ratio[1])
           for op in config.operations]
@@ -318,6 +327,7 @@ def build(preprocessor_step_config):
                   'random_coef': random_coef,
                   'min_padded_size_ratio': min_padded_size_ratio,
                   'max_padded_size_ratio': max_padded_size_ratio,
+                  'clip_bboxes' : clip_bboxes
               })
     return (preprocessor.ssd_random_crop_pad_fixed_aspect_ratio, {})
 

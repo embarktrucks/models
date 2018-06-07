@@ -41,6 +41,7 @@ class InputDataFields(object):
     groundtruth_image_classes: image-level class labels.
     groundtruth_boxes: coordinates of the ground truth boxes in the image.
     groundtruth_classes: box-level class labels.
+    groundtruth_labels: box-level class text labales
     groundtruth_label_types: box-level label types (e.g. explicit negative).
     groundtruth_is_crowd: [DEPRECATED, use groundtruth_group_of instead]
       is the groundtruth a single object or a crowd.
@@ -71,6 +72,7 @@ class InputDataFields(object):
   groundtruth_image_classes = 'groundtruth_image_classes'
   groundtruth_boxes = 'groundtruth_boxes'
   groundtruth_classes = 'groundtruth_classes'
+  groundtruth_labels = 'groundtruth_labels'
   groundtruth_label_types = 'groundtruth_label_types'
   groundtruth_is_crowd = 'groundtruth_is_crowd'
   groundtruth_area = 'groundtruth_area'

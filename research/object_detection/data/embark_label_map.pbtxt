@@ -1,4 +1,24 @@
 item {
   id: 1
-  name: 'vehicle'
+  name: 'car'
+}
+item {
+  id: 1
+  name: 'truck'
+}
+item {
+  id: 1
+  name: 'van'
+}
+item {
+  id: 1
+  name: 'motorcycle'
+}
+item {
+  id: 1
+  name: 'other-vehicle'
+}
+item {
+  id: 1
+  name: 'semi'
 }

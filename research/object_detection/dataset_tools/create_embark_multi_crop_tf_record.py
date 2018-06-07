@@ -63,9 +63,9 @@ CAMERA = 3
 
 LABEL_TO_INDEX = {
     "background": 0,
-    "truck": 1,
+    "car": 1,
     "semi": 2,
-    "car": 3,
+    "truck": 3,
     "van": 4,
     "motorcycle": 5,
     "other-vehicle": 6
@@ -147,7 +147,7 @@ def extract_cuboid_bboxes(cuboids,
         if area < min_bbox_area:
             continue
         # only use vehicle or no vehicle
-        labels.append(1)
+        labels.append(label)
         labels_text.append(label_text.encode('utf8'))
         ymins.append(ymin)
         xmins.append(xmin)
@@ -329,7 +329,8 @@ def get_frame_objects():
     rds.load(db='production')
     db = rds.session()
     frame_filter = and_(m.FrameLabels.data != None,
-                        m.FrameLabels.label_type == m.FrameLabels.LabelTypes.VEHICLE_CUBOID)
+                        m.FrameLabels.label_type == m.FrameLabels.LabelTypes.VEHICLE_CUBOID,
+                        m.FrameLabels.cam == 2)
     frame_objects = db.query(m.FrameLabels)\
         .filter(frame_filter)\
         .order_by(-m.FrameLabels.timestamp)\
