@@ -914,10 +914,8 @@ def _strict_random_crop_image(image,
         image_shape = tf.shape(image)
 
         # boxes are [N, 4]. Lets first make them [N, 1, 4].
-        clipped_boxes = boxes
-        print "~~~~~~~~~~~~~~~~~ clip_bboxes", clip_bboxes
-        if clip_bboxes:
-            clipped_boxes = tf.clip_by_value(boxes, clip_value_min=0.0, clip_value_max=1.0)
+
+        clipped_boxes = tf.clip_by_value(boxes, clip_value_min=0.0, clip_value_max=1.0)
         boxes_expanded = tf.expand_dims(clipped_boxes, 1)
 
         sample_distorted_bounding_box = tf.image.sample_distorted_bounding_box(

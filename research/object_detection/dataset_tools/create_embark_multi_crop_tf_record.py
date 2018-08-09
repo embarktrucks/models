@@ -55,7 +55,7 @@ from embark.dqi.sensor_data_interface import SensorDataInterface
 from embark.services import RDSService
 from pyspark import SparkContext, SparkConf
 import embark.services.thedb.model as m
-SENSOR_DATA = SensorDataInterface('/sbox/data')
+SENSOR_DATA = SensorDataInterface()
 
 DATA_PATH = '/sbox/data'
 CAMERA = 3
@@ -164,6 +164,9 @@ def extract_cuboid_bboxes(cuboids,
 
 
 def crop_image(image, top_left, bot_right, gt_boxes, labels, labels_text, clip_window=True):
+    """
+    Crops the image with top left to bot right
+    """
     cropped = image[top_left[0]:bot_right[0], top_left[1]:bot_right[1]]
     image_shape = np.array(image.shape[:2])
     top_left = top_left / image_shape.astype(np.float32)
@@ -262,16 +265,16 @@ def create_example(image,
 
 
 def process_frame_object(frame, clip_window=True):
-    image_file = SENSOR_DATA.get_image(1, frame.timestamp, frame.cam)
+    image_file = SENSOR_DATA.get_image(frame.truck, frame.timestamp, frame.cam)
     if not os.path.exists(image_file):
         print('Image file does not exist: ', image_file)
         return []
-    hires_file = image_file.replace('images', 'images_hires')
-    if not os.path.exists(hires_file):
-        # print('Image file does not exist: ', hires_file)
-        return []
+    # hires_file = image_file.replace('images', 'images_hires')
+    # if not os.path.exists(hires_file):
+    #     # print('Image file does not exist: ', hires_file)
+    #     return []
 
-    image = cv2.imread(hires_file)
+    image = cv2.imread(image_file)
     if image is None:
         # print('Image file is None: ', image_file)
         return []
@@ -280,29 +283,33 @@ def process_frame_object(frame, clip_window=True):
 
     labeled_image_height = 384
     labeled_image_width = 672
+    image = cv2.resize(image, (labeled_image_width, labeled_image_height), interpolation=cv2.INTER_LINEAR)
     labeled_image_shape = [labeled_image_height, labeled_image_width]
     labels, labels_text, boxes = extract_cuboid_bboxes(cuboid_data,
                                                        labeled_image_shape,
                                                        clip_window=clip_window)
     num_cuboids = boxes.shape[0]
-    if num_cuboids == 0:
-        print('no cuboids found for: ', frame.timestamp, frame)
-        print(hires_file)
-        return []
+    # if num_cuboids == 0:
+    #     print('no cuboids found for: ', frame.timestamp, frame)
+    #     print(image_file)
+    #     return []
+    #
 
-    crop_boxes = [(np.array([0, 0], dtype=np.int32), np.array([728, 1288], dtype=np.int32))]
     image_shape = image.shape
     factor = 5.
     horizon = 80
     side_buffer = 80
+    crop_boxes = [(np.array([0, 0], dtype=np.int32), np.array(labeled_image_shape, dtype=np.int32))]
 
-    for r in [horizon]:
-        for c in np.linspace(side_buffer + image_shape[1] / factor,
-                             -side_buffer + (factor - 2) * image_shape[1] / factor, num=3):
-            top_left = np.array([r, c], dtype=np.int32)
-            bot_right = np.array([r + image_shape[0] / factor,
-                                  c + image_shape[1] / factor], dtype=np.int32)
-            crop_boxes.append((top_left, bot_right))
+    # tabbed out for ow res images
+    #crop_boxes = [(np.array([0, 0], dtype=np.int32), np.array([728, 1288], dtype=np.int32))]
+    # for r in [horizon]:
+    #     for c in np.linspace(side_buffer + image_shape[1] / factor,
+    #                          -side_buffer + (factor - 2) * image_shape[1] / factor, num=3):
+    #         top_left = np.array([r, c], dtype=np.int32)
+    #         bot_right = np.array([r + image_shape[0] / factor,
+    #                               c + image_shape[1] / factor], dtype=np.int32)
+    #         crop_boxes.append((top_left, bot_right))
     examples = []
     for top_left, bot_right in crop_boxes:
         cropped, cropped_gt_adjusted, cropped_labels, cropped_labels_text = crop_image(image,
@@ -314,7 +321,7 @@ def process_frame_object(frame, clip_window=True):
         if cropped_gt_adjusted.shape[0] == 0:
             continue
         example = create_example(cropped,
-                                 hires_file,
+                                 image_file,
                                  cropped_gt_adjusted,
                                  cropped_labels_text,
                                  cropped_labels,
@@ -324,7 +331,7 @@ def process_frame_object(frame, clip_window=True):
 
 
 def get_frame_objects():
-    sensor_data = SensorDataInterface('/sbox/data')
+    sensor_data = SensorDataInterface()
     rds = RDSService()
     rds.load(db='production')
     db = rds.session()
@@ -424,7 +431,7 @@ def main(_):
     import random
 
     frame_objects = get_frame_objects()
-    frame_objects = frame_objects[:38500]
+    # frame_objects = frame_objects[:38500]
     num_total = len(frame_objects)
     num_train = int(num_total * .95)
     train_set = frame_objects[:num_train]
