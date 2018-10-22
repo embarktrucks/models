@@ -51,10 +51,12 @@ from datetime import datetime, timedelta
 from multiprocessing import Pool
 import os
 from sqlalchemy import or_, and_
+from embark.services.thedb import model as m
+from embark import services
 from embark.dqi.sensor_data_interface import SensorDataInterface
-from embark.services import RDSService
 from pyspark import SparkContext, SparkConf
-import embark.services.thedb.model as m
+services.rds.load(db='production')
+
 SENSOR_DATA = SensorDataInterface()
 
 DATA_PATH = '/sbox/data'
@@ -283,7 +285,8 @@ def process_frame_object(frame, clip_window=True):
 
     labeled_image_height = 384
     labeled_image_width = 672
-    image = cv2.resize(image, (labeled_image_width, labeled_image_height), interpolation=cv2.INTER_LINEAR)
+    image = cv2.resize(image, (labeled_image_width, labeled_image_height),
+                       interpolation=cv2.INTER_LINEAR)
     labeled_image_shape = [labeled_image_height, labeled_image_width]
     labels, labels_text, boxes = extract_cuboid_bboxes(cuboid_data,
                                                        labeled_image_shape,
@@ -331,19 +334,20 @@ def process_frame_object(frame, clip_window=True):
 
 
 def get_frame_objects():
-    sensor_data = SensorDataInterface()
-    rds = RDSService()
-    rds.load(db='production')
-    db = rds.session()
+
     frame_filter = and_(m.FrameLabels.data != None,
                         m.FrameLabels.label_type == m.FrameLabels.LabelTypes.VEHICLE_CUBOID,
-                        m.FrameLabels.cam == 2)
-    frame_objects = db.query(m.FrameLabels)\
-        .filter(frame_filter)\
-        .order_by(-m.FrameLabels.timestamp)\
-        .all()
-    db.commit()
-    db.close()
+                        or_(m.FrameLabels.cam == 4, m.FrameLabels.cam == 3))
+    try:
+        db = services.rds.scoped_session()
+        frame_objects = db.query(m.FrameLabels)\
+            .filter(frame_filter)\
+            .order_by(-m.FrameLabels.timestamp)\
+            .limit(100)\
+            .all()
+    finally:
+        db.close()
+
     return frame_objects
 
 
@@ -389,10 +393,12 @@ def save_dataset(sc, save_path, frame_objects, frames_per_record=500, num_worker
         writer.close()
         return num_examples, num_frames
 
-    # counts = save_partition(partitions[0][0], partitions[0][1])
-    counts = sc.parallelize(partitions, num_workers)\
-        .map(lambda (partition, frames): save_partition(partition, frames))\
-        .collect()
+    if num_workers == 1:
+        counts = [save_partition(partition, frames) for partition, frames in partitions]
+    else:
+        counts = sc.parallelize(partitions, num_workers)\
+            .map(lambda (partition, frames): save_partition(partition, frames))\
+            .collect()
 
     print('Num Frames in Dataset:', np.sum(counts, axis=0))
 
@@ -431,15 +437,23 @@ def main(_):
     import random
 
     frame_objects = get_frame_objects()
-    # frame_objects = frame_objects[:38500]
-    num_total = len(frame_objects)
-    num_train = int(num_total * .95)
-    train_set = frame_objects[:num_train]
-    test_set = frame_objects[num_train:]
+    cam_frames = {}
+    for frame in frame_objects:
+        if frame.cam not in cam_frames:
+            cam_frames[frame.cam] = []
+        cam_frames[frame.cam].append(frame)
+
+    # we are testing cam4
+    num_total = len(cam_frames[4])
+    num_test = int(num_total * .05)
+
+    train_set = cam_frames[4][num_test:]
+    test_set = cam_frames.get(3,[]) + cam_frames[4][:num_test]
+
     print("TRAIN FRAMES: ", len(train_set))
     print("TEST FRAMES: ", len(test_set))
 
-    num_workers = 24
+    num_workers = 1
     conf = SparkConf()
     conf.setMaster('local[*]')
     conf.setAppName('emabark_records')
