@@ -167,12 +167,19 @@ def extract_cuboid_bboxes(cuboids,
 
 def crop_image(image, top_left, bot_right, gt_boxes, labels, labels_text, clip_window=True):
     """
-    Crops the image with top left to bot right
+    Crops the image with top left to bot right/
+    top_left - [y,x] coordinate of top left corner of the crop.  in normalized coordinates [0-1]
+    bot_right - [y,x] coordinate of bot right corner of the crop.  in normalized coordinates [0-1]
+    gt_boxes - bboxes in original image in normalized coordinates
+    labels - labels of th bboxes
+    labels_text - label text of the bboxes
+    clip_window - will clip the bboxes based on the crop box if true, otherwise bboxes may have negative values
     """
-    cropped = image[top_left[0]:bot_right[0], top_left[1]:bot_right[1]]
     image_shape = np.array(image.shape[:2])
-    top_left = top_left / image_shape.astype(np.float32)
-    bot_right = bot_right / image_shape.astype(np.float32)
+    tl = (np.array(top_left) * image_shape).astype(int)
+    br = (np.array(bot_right) * image_shape).astype(int)
+    cropped = image[tl[0]:br[0], tl[1]:br[1]]
+
     gt_boxes_area = compute_area(gt_boxes)
 
     clip_window
@@ -242,10 +249,10 @@ def create_example(image,
     feature_set = {
         'image/height': dataset_util.int64_feature(height),
         'image/width': dataset_util.int64_feature(width),
-        'image/crop_tl_x': dataset_util.int64_feature(crop[0][1]),
-        'image/crop_tl_y': dataset_util.int64_feature(crop[0][0]),
-        'image/crop_br_x': dataset_util.int64_feature(crop[1][1]),
-        'image/crop_br_y': dataset_util.int64_feature(crop[1][0]),
+        'image/crop_tl_x': dataset_util.float_list_feature([crop[0][1]]),
+        'image/crop_tl_y': dataset_util.float_list_feature([crop[0][0]]),
+        'image/crop_br_x': dataset_util.float_list_feature([crop[1][1]]),
+        'image/crop_br_y': dataset_util.float_list_feature([crop[1][0]]),
         'image/filename': dataset_util.bytes_feature(image_file.encode('utf8')),
         'image/source_id': dataset_util.bytes_feature(image_file.encode('utf8')),
         'image/key/sha256': dataset_util.bytes_feature(key.encode('utf8')),
@@ -267,52 +274,42 @@ def create_example(image,
 
 
 def process_frame_object(frame, clip_window=True):
-    image_file = SENSOR_DATA.get_image(frame.truck, frame.timestamp, frame.cam)
+    image_file = "/sbox/" + SENSOR_DATA.get_image(frame.truck, frame.timestamp, frame.cam)
+    image_file = image_file.replace('images', 'images/high_res')
     if not os.path.exists(image_file):
         print('Image file does not exist: ', image_file)
         return []
-    # hires_file = image_file.replace('images', 'images_hires')
-    # if not os.path.exists(hires_file):
-    #     # print('Image file does not exist: ', hires_file)
-    #     return []
 
     image = cv2.imread(image_file)
-    if image is None:
-        # print('Image file is None: ', image_file)
-        return []
-    # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    cuboid_data = json.loads(frame.data)
 
-    labeled_image_height = 384
-    labeled_image_width = 672
-    image = cv2.resize(image, (labeled_image_width, labeled_image_height),
-                       interpolation=cv2.INTER_LINEAR)
-    labeled_image_shape = [labeled_image_height, labeled_image_width]
+    # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    cuboid_data = frame.data
+
     labels, labels_text, boxes = extract_cuboid_bboxes(cuboid_data,
-                                                       labeled_image_shape,
+                                                       image.shape[:2],
                                                        clip_window=clip_window)
     num_cuboids = boxes.shape[0]
-    # if num_cuboids == 0:
-    #     print('no cuboids found for: ', frame.timestamp, frame)
-    #     print(image_file)
-    #     return []
+    if num_cuboids == 0:
+        print('no cuboids found for: ', frame.timestamp, frame)
+        print(image_file)
+        return []
     #
 
-    image_shape = image.shape
-    factor = 5.
-    horizon = 80
-    side_buffer = 80
-    crop_boxes = [(np.array([0, 0], dtype=np.int32), np.array(labeled_image_shape, dtype=np.int32))]
-
+    crop_boxes = [(np.array([0, 0.]), np.array([1, 1.]))]
+    horizon = .22
+    crop_overlap = 0.25
+    crop_scales = [1 / 5., 396 / 1288]
+    # create crops at multiple scales of image dimensions
+    # crop in the center of the image with a crop to the left and the right
+    # with overlap_%
+    for scale in crop_scales:
+        for i in [-1, 0, 1]:
+            # crop center of the image and around it
+            x = 0.5 + i * (1 - crop_overlap) * scale
+            crop = (np.array([horizon, x]), np.array([horizon + scale, x + scale]))
+            crop_boxes.append(crop)
     # tabbed out for ow res images
-    #crop_boxes = [(np.array([0, 0], dtype=np.int32), np.array([728, 1288], dtype=np.int32))]
-    # for r in [horizon]:
-    #     for c in np.linspace(side_buffer + image_shape[1] / factor,
-    #                          -side_buffer + (factor - 2) * image_shape[1] / factor, num=3):
-    #         top_left = np.array([r, c], dtype=np.int32)
-    #         bot_right = np.array([r + image_shape[0] / factor,
-    #                               c + image_shape[1] / factor], dtype=np.int32)
-    #         crop_boxes.append((top_left, bot_right))
+
     examples = []
     for top_left, bot_right in crop_boxes:
         cropped, cropped_gt_adjusted, cropped_labels, cropped_labels_text = crop_image(image,
@@ -321,8 +318,6 @@ def process_frame_object(frame, clip_window=True):
                                                                                        boxes,
                                                                                        labels,
                                                                                        labels_text)
-        if cropped_gt_adjusted.shape[0] == 0:
-            continue
         example = create_example(cropped,
                                  image_file,
                                  cropped_gt_adjusted,
@@ -337,13 +332,12 @@ def get_frame_objects():
 
     frame_filter = and_(m.FrameLabels.data != None,
                         m.FrameLabels.label_type == m.FrameLabels.LabelTypes.VEHICLE_CUBOID,
-                        or_(m.FrameLabels.cam == 4, m.FrameLabels.cam == 3))
+                        or_(m.FrameLabels.cam == 8))
     try:
         db = services.rds.scoped_session()
         frame_objects = db.query(m.FrameLabels)\
             .filter(frame_filter)\
             .order_by(-m.FrameLabels.timestamp)\
-            .limit(100)\
             .all()
     finally:
         db.close()
@@ -443,17 +437,18 @@ def main(_):
             cam_frames[frame.cam] = []
         cam_frames[frame.cam].append(frame)
 
+    cam = 8
     # we are testing cam4
-    num_total = len(cam_frames[4])
+    num_total = len(cam_frames[cam])
     num_test = int(num_total * .05)
 
-    train_set = cam_frames[4][num_test:]
-    test_set = cam_frames.get(3,[]) + cam_frames[4][:num_test]
+    train_set = cam_frames[cam][num_test:]
+    test_set = cam_frames[cam][:num_test]
 
     print("TRAIN FRAMES: ", len(train_set))
     print("TEST FRAMES: ", len(test_set))
-
-    num_workers = 1
+    frames_per_record = 4
+    num_workers = 48
     conf = SparkConf()
     conf.setMaster('local[*]')
     conf.setAppName('emabark_records')
@@ -467,10 +462,10 @@ def main(_):
     sc = SparkContext(conf=conf)
 
     print("saving train")
-    save_dataset(sc, FLAGS.output_path + '/train', train_set,
+    save_dataset(sc, FLAGS.output_path + '/train', train_set, frames_per_record=frames_per_record,
                  num_workers=num_workers, clip_window=FLAGS.clip)
     print("saving test")
-    save_dataset(sc, FLAGS.output_path + '/test', test_set,
+    save_dataset(sc, FLAGS.output_path + '/test', test_set, frames_per_record=frames_per_record,
                  num_workers=num_workers, clip_window=FLAGS.clip)
 
 if __name__ == '__main__':

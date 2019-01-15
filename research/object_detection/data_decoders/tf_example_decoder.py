@@ -63,10 +63,10 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             'image/width':
                 tf.FixedLenFeature((), tf.int64, 1),
 
-            'image/crop_tl_x': tf.FixedLenFeature((), tf.int64, 1),
-            'image/crop_tl_y': tf.FixedLenFeature((), tf.int64, 1),
-            'image/crop_br_x': tf.FixedLenFeature((), tf.int64, 1),
-            'image/crop_br_y': tf.FixedLenFeature((), tf.int64, 1),
+            'image/crop_tl_x': tf.FixedLenFeature((), tf.float32, 1),
+            'image/crop_tl_y': tf.FixedLenFeature((), tf.float32, 1),
+            'image/crop_br_x': tf.FixedLenFeature((), tf.float32, 1),
+            'image/crop_br_y': tf.FixedLenFeature((), tf.float32, 1),
 
             # Object boxes and classes.
             'image/object/bbox/xmin':
