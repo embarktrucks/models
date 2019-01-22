@@ -447,7 +447,7 @@ def main(_):
 
     print("TRAIN FRAMES: ", len(train_set))
     print("TEST FRAMES: ", len(test_set))
-    frames_per_record = 4
+    frames_per_record = 500
     num_workers = 48
     conf = SparkConf()
     conf.setMaster('local[*]')
